@@ -12,6 +12,12 @@ class AnimalParser
     Nokogiri::HTML(response.body)
   end
 
+  def parse_profile(url)
+    doc = fetch_data(url)
+    description = doc.css('p.ctlb-block-desc').text.strip
+    [description]
+  end
+
   def parse_dogs
     page_number = 1
     animals = []
@@ -26,6 +32,7 @@ class AnimalParser
       items.each do |animal|
         name = animal.css('h2 strong').text.strip
         details = animal.css('p').text.strip
+        profile_url = animal.css('a').attr('href')&.value
         image_url = animal.css('.rt-img-holder img').attr('src')&.value
 
         # Extracting information using regex
@@ -35,13 +42,18 @@ class AnimalParser
         birth_year = birth_year_match ? "ur. #{birth_year_match[1]}" : nil
         size = details.match(/Rozmiar:\s*(.*)/)&.captures&.first&.strip
 
+        # Fetch profile details
+        description = parse_profile(profile_url)
+
         animals << {
           name: name,
           number: number,
           gender: gender,
           age: birth_year,
           size: size,
-          image_url: image_url,
+          description: description.first,
+          image_urls: image_url,
+          profile_url: profile_url,
           species: 'Pies'
         }
       end
@@ -66,6 +78,7 @@ class AnimalParser
       items.each do |animal|
         name = animal.css('h2 strong').text.strip
         details = animal.css('p').text.strip
+        profile_url = animal.css('a').attr('href')&.value
         image_url = animal.css('.rt-img-holder img').attr('src')&.value
 
         # Extracting information using regex
@@ -75,13 +88,18 @@ class AnimalParser
         fiv_felv_test_match = details.match(/Test FIV\/FELV\s*\([^\)]+\)|Test FIV\s*\([^\)]+\)\s*\/\s*FELV\s*\([^\)]+\)/)
         fiv_felv_test = fiv_felv_test_match ? fiv_felv_test_match[0].strip : 'Brak testu'
 
+        # Fetch profile details
+        description = parse_profile(profile_url)
+
         animals << {
           name: name,
           number: number,
           gender: gender,
           age: age,
           fiv_felv_test: fiv_felv_test,
-          image_url: image_url,
+          description: description.first,
+          image_urls: image_url,
+          profile_url: profile_url,
           species: 'Kot'
         }
       end
@@ -100,6 +118,7 @@ class AnimalParser
     doc.css('.rt-grid-item').each do |animal|
       number = animal.css('h2 strong').text.strip
       details = animal.css('p').text.strip
+      profile_url = animal.css('a').attr('href')&.value
       image_url = animal.css('.rt-img-holder img').attr('src')&.value
 
       # Extracting information using regex
@@ -108,13 +127,18 @@ class AnimalParser
       age = details.match(/Wiek:\s*(.*?)\s*(Znaleziona|Znaleziony|$)/)&.captures&.first&.strip || 'Brak wieku'
       found = details.match(/(Znaleziona|Znaleziony):\s*(.*)/)&.captures&.last&.strip || 'Brak miejsca'
 
+      # Fetch profile details
+      description = parse_profile(profile_url)
+
       animals << {
         name: number,
         number: number,
         gender: gender,
         age: age,
         found: found,
-        image_url: image_url,
+        description: description.first,
+        image_urls: image_url,
+        profile_url: profile_url,
         species: 'Nowo przybyłe'
       }
     end
@@ -126,12 +150,13 @@ class AnimalParser
     workbook = WriteXLSX.new('Schronisko Chorzow.xlsx')
     sheet = workbook.add_worksheet('Zwierzęta')
 
-    sheet.write_row(0, 0, ["Imię", "Numer", "Płeć", "Wiek", "Rozmiar", "Testy", "Znaleziona", "Gatunek", "URL zdjęcia"])
+    sheet.write_row(0, 0, ["Imię", "Numer", "Płeć", "Wiek", "Rozmiar", "Testy", "Znaleziona", "Gatunek", "Opis", "URL zdjęcia", "URL Profilu"])
 
     all_data.each_with_index do |animal, index|
       sheet.write_row(index + 1, 0, [
         animal[:name], animal[:number], animal[:gender], animal[:age], animal[:size], 
-        animal[:fiv_felv_test], animal[:found], animal[:species], animal[:image_url]
+        animal[:fiv_felv_test], animal[:found], animal[:species], animal[:description], 
+        animal[:image_urls], animal[:profile_url]
       ])
     end
 
