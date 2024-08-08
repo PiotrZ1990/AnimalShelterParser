@@ -13,46 +13,55 @@ class AnimalParser
   end
 
   def parse_dogs
-    doc = fetch_data(@url)
+    page_number = 1
     animals = []
 
-    doc.css('.rt-grid-item').each do |animal|
-      name = animal.css('h2 strong').text.strip
-      details = animal.css('p').text.strip
-      image_url = animal.css('.rt-img-holder img').attr('src')&.value
+      loop do
+      url = "https://schroniskochorzow.pl/psy/page/#{page_number}/"
+      doc = fetch_data(url)
+      items = doc.css('.rt-grid-item')
 
-      # Debugging output
-      puts "Dog details: #{details.inspect}"
-      puts "Image URL: #{image_url.inspect}"
+      break if items.empty?
 
-      # Extracting information using regex
-      number = details.match(/Numer:\s*([\d\/-]+)/)&.captures&.first&.strip
-      gender = details.match(/Płeć:\s*(samiec|samica|samce|samice)/)&.captures&.first&.strip
+      doc.css('.rt-grid-item').each do |animal|
+        name = animal.css('h2 strong').text.strip
+        details = animal.css('p').text.strip
+        image_url = animal.css('.rt-img-holder img').attr('src')&.value
 
-      # Extract birth year and month (if available)
-      birth_year_match = details.match(/Wiek:\s*ur\.\s*(?:\d{2}\.)?\s*(\d{4})/)
-      if birth_year_match
-        year = birth_year_match[1]   # Extract year
-        birth_year = "ur. #{year}"   # Format as "ur. YYYY"
-      else
-        birth_year = nil
+        # Debugging output
+        puts "Dog details: #{details.inspect}"
+        puts "Image URL: #{image_url.inspect}"
+
+        # Extracting information using regex
+        number = details.match(/Numer:\s*([\d\/-]+)/)&.captures&.first&.strip
+        gender = details.match(/Płeć:\s*(samiec|samica|samce|samice)/)&.captures&.first&.strip
+
+        # Extract birth year and month (if available)
+        birth_year_match = details.match(/Wiek:\s*ur\.\s*(?:\d{2}\.)?\s*(\d{4})/)
+        if birth_year_match
+          year = birth_year_match[1]   # Extract year
+          birth_year = "ur. #{year}"   # Format as "ur. YYYY"
+        else
+          birth_year = nil
+        end
+
+        # Size (Rozmiar) extraction, if applicable
+        size = details.match(/Rozmiar:\s*(.*)/)&.captures&.first&.strip
+
+        animals << {
+          name: name,
+          number: number,
+          gender: gender,
+          birth_year: birth_year,
+          size: size,
+          image_url: image_url
+        }
       end
 
-      # Size (Rozmiar) extraction, if applicable
-      size = details.match(/Rozmiar:\s*(.*)/)&.captures&.first&.strip
-
-      animals << {
-        name: name,
-        number: number,
-        gender: gender,
-        birth_year: birth_year,
-        size: size,
-        image_url: image_url
-      }
+      page_number += 1
     end
-
-    animals
-  end
+      animals
+    end
 
   def parse_cats
     page_number = 1
